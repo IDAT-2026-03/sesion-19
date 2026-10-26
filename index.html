@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sesión 19: CSS Grid y Diseño Adaptable — IDAT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            idatYellow: '#FFC820',
+            idatDark: '#111827',
+            idatMuted: '#4B5563',
+            idatLight: '#F3F4F6'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Fira Code', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .slide-container { perspective: 1000px; }
+    .slide {
+      transition: all 0.35s ease-in-out;
+      opacity: 0;
+      transform: scale(0.99) translateY(4px);
+      display: none;
+    }
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      animation: fadeSlide .3s ease;
+    }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: scale(0.99) translateY(4px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    .dark-scroll::-webkit-scrollbar-thumb { background: #4b5563; }
+
+    /* ---------- Demo interactiva de Grid ---------- */
+    .grid-demo { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(56px, 1fr); }
+    .grid-demo > div { transition: all .2s ease; }
+
+    /* ---------- Simulador responsive (max-width) ---------- */
+    .sim-frame { transition: width .15s linear; overflow: hidden; }
+    .sim-cols { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); }
+    .sim-frame.sim-sm .sim-cols { grid-template-columns: repeat(2, 1fr); }
+    .sim-frame.sim-md .sim-cols,
+    .sim-frame.sim-xs .sim-cols { grid-template-columns: 1fr; }
+
+    .sim-links { display: flex; gap: 10px; justify-content: flex-end; }
+    .sim-frame.sim-md .sim-links,
+    .sim-frame.sim-xs .sim-links { display: none; }
+
+    .sim-burger { display: none; }
+    .sim-frame.sim-md .sim-burger,
+    .sim-frame.sim-xs .sim-burger { display: flex; }
+
+    .sim-h1 { font-size: 1.9rem; line-height: 1.1; }
+    .sim-frame.sim-sm .sim-h1 { font-size: 1.5rem; }
+    .sim-frame.sim-md .sim-h1 { font-size: 1.15rem; }
+    .sim-frame.sim-xs .sim-h1 { font-size: 0.95rem; }
+
+    .sim-hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 10px; align-items: center; }
+    .sim-frame.sim-md .sim-hero,
+    .sim-frame.sim-xs .sim-hero { grid-template-columns: 1fr; align-items: start; }
+
+    .sim-sidebar { display: block; }
+    .sim-frame.sim-md .sim-sidebar,
+    .sim-frame.sim-xs .sim-sidebar { display: none; }
+
+    .device-stage {
+      background-color: #f9fafb;
+      background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+      background-size: 16px 16px;
+      background-position: center;
+    }
+
+    input[type="range"].sim-range {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      outline: none;
+    }
+    input[type="range"].sim-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #111827;
+      border: 3px solid #FFC820;
+      cursor: grab;
+    }
+    input[type="range"].sim-range::-moz-range-thumb {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: #111827;
+      border: 3px solid #FFC820;
+      cursor: grab;
+    }
+
+    /* ---------- Laboratorio: menú adaptable ---------- */
+    .lab-frame { transition: max-width .35s ease; }
+    .lab-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .lab-links { display: flex; align-items: center; gap: 16px; }
+    .lab-cta { display: inline-block; }
+    .lab-frame.lab-mobile { max-width: 340px; }
+    .lab-frame.lab-mobile .lab-nav { flex-direction: column; align-items: stretch; }
+    .lab-frame.lab-mobile .lab-links { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .lab-frame.lab-mobile .lab-cta { text-align: center; }
+    .lab-frame.lab-mobile .lab-cards { display: grid; grid-template-columns: 1fr; }
+
+    .lab-btn-active { background:#111827 !important; color:#FFC820 !important; }
+  </style>
+</head>
+<body class="bg-gray-100 text-idatDark font-sans h-screen flex flex-col justify-between overflow-hidden select-none">
+
+  <!-- ================= HEADER ================= -->
+  <header class="bg-idatDark text-white px-6 md:px-12 py-3 flex items-center justify-between border-b-4 border-idatYellow shadow-md h-[72px] flex-shrink-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="bg-idatYellow text-idatDark font-black px-3 py-1 rounded text-lg tracking-wider flex-shrink-0">IDAT</div>
+      <div class="h-6 w-[1px] bg-gray-600 hidden md:block flex-shrink-0"></div>
+      <div class="hidden md:block min-w-0">
+        <span class="text-xs text-idatYellow font-bold tracking-widest block uppercase">Desarrollo Web: HTML &amp; CSS · Bloque 2</span>
+        <span class="text-sm font-semibold truncate block">Sesión 19: CSS Grid y Diseño Adaptable (Mobile First con max-width)</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <span class="hidden lg:inline-block bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Hito · Entrega Preliminar</span>
+      <div class="text-right text-xs md:text-sm font-medium text-gray-300">
+        Docente: <strong class="text-idatYellow">Ing. Jhon Chavez</strong>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= DIAPOSITIVAS ================= -->
+  <main class="flex-1 p-4 md:p-6 overflow-hidden flex items-center justify-center">
+    <div class="w-full max-w-[1320px] h-full flex items-stretch justify-center slide-container">
+
+      <!-- ============================================================ -->
+      <!-- 1 · PORTADA                                                   -->
+      <!-- ============================================================ -->
+      <div id="slide-1" class="slide active w-full bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden flex-col md:flex-row h-full">
+        <div class="md:w-5/12 bg-idatYellow p-8 md:p-12 flex flex-col justify-between relative overflow-hidden h-full flex-shrink-0">
+          <div class="absolute -right-16 -top-16 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
+          <div class="relative">
+            <span class="bg-idatDark text-idatYellow font-black px-4 py-1.5 rounded-full text-xs tracking-widest uppercase">SESIÓN 19</span>
+            <h1 class="text-3xl md:text-5xl font-black text-idatDark mt-6 leading-[1.05]">Grid y<br>Diseño<br>Adaptable</h1>
+            <p class="text-idatDark/80 font-medium mt-3 text-sm md:text-base">Armamos la estructura con <strong>CSS Grid</strong> y la hacemos caber en el celular, la tablet y la laptop con <strong>media queries</strong>.</p>
+
+            <div class="mt-7 bg-idatDark/5 border-2 border-idatDark/15 rounded-2xl p-4">
+              <p class="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-idatDark/50 mb-3">Un mismo código · tres pantallas</p>
+              <div class="space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-[9px] font-bold text-idatDark/70 w-9 flex-shrink-0">375</span>
+                  <div class="flex-1"><div class="h-1.5 rounded-full bg-idatDark" style="width:30%"></div></div>
+                  <span class="text-[9px] font-bold text-idatDark/60 w-14 text-right flex-shrink-0">Móvil</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-[9px] font-bold text-idatDark/70 w-9 flex-shrink-0">768</span>
+                  <div class="flex-1"><div class="h-1.5 rounded-full bg-idatDark/70" style="width:55%"></div></div>
+                  <span class="text-[9px] font-bold text-idatDark/60 w-14 text-right flex-shrink-0">Tablet</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-[9px] font-bold text-idatDark/70 w-9 flex-shrink-0">1440</span>
+                  <div class="flex-1"><div class="h-1.5 rounded-full bg-idatDark/40" style="width:100%"></div></div>
+                  <span class="text-[9px] font-bold text-idatDark/60 w-14 text-right flex-shrink-0">Desktop</span>
+                </div>
+              </div>
+              <p class="text-[9px] text-idatDark/50 mt-2.5 leading-snug">El CSS decide cómo se acomoda cada uno.</p>
+            </div>
+          </div>
+          <div class="border-t border-idatDark/20 pt-6 relative">
+            <span class="text-xs font-bold uppercase tracking-wider text-idatDark/60 block">Facilitador del curso:</span>
+            <span class="text-xl font-extrabold text-idatDark block mt-1">Ing. Jhon Chavez</span>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="text-xs font-semibold bg-idatDark/10 text-idatDark px-2 py-0.5 rounded">IDAT © 2026</span>
+              <span class="text-xs font-semibold bg-idatDark text-idatYellow px-2 py-0.5 rounded">Semana 10</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="md:w-7/12 p-8 md:p-12 flex flex-col justify-center bg-gray-50 h-full overflow-y-auto custom-scrollbar">
+          <h2 class="text-2xl md:text-3xl font-bold text-idatDark mb-2">De una web que se rompe a una que se adapta</h2>
+          <p class="text-gray-600 mb-5 leading-relaxed text-xs md:text-sm">En tu monitor todo se ve perfecto, pero en el celular aparece la <strong>barra de scroll horizontal</strong>, las tarjetas se aplastan y el menú se desborda. Hoy lo resolvemos con tres herramientas: <strong>Grid</strong> para ordenar, <strong>media queries con max-width</strong> para adaptar y <strong>rem</strong> para que las medidas acompañen.</p>
+
+          <div class="grid grid-cols-3 gap-3 mb-5">
+            <div class="bg-white p-4 rounded-2xl border border-gray-200 text-center shadow-sm">
+              <span class="text-3xl mb-1 block">🧱</span>
+              <h3 class="font-bold text-xs md:text-sm text-idatDark">Grid</h3>
+              <p class="text-[11px] text-idatMuted mt-1">Tarjetas ordenadas en filas y columnas.</p>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-gray-200 text-center shadow-sm">
+              <span class="text-3xl mb-1 block">📐</span>
+              <h3 class="font-bold text-xs md:text-sm text-idatDark">max-width</h3>
+              <p class="text-[11px] text-idatMuted mt-1">Todos los ajustes en un solo lugar.</p>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-gray-200 text-center shadow-sm">
+              <span class="text-3xl mb-1 block">🔤</span>
+              <h3 class="font-bold text-xs md:text-sm text-idatDark">rem</h3>
+              <p class="text-[11px] text-idatMuted mt-1">Una sola medida base para todo.</p>
+            </div>
+          </div>
+
+          <div class="p-3.5 bg-white rounded-xl border-l-4 border-idatYellow shadow-sm">
+            <p class="text-[11px] md:text-xs text-idatDark leading-relaxed">
+              <strong>Y hoy es hito:</strong> al terminar la clase entregas la versión preliminar de tu proyecto, ya publicada y adaptada a celular, tablet y escritorio.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 2 · RUTA DE LA SESIÓN                                         -->
+      <!-- ============================================================ -->
+      <div id="slide-2" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">RUTA DE HOY</span>
+              <h2 class="text-xl md:text-2xl font-black text-idatDark uppercase tracking-tight">Los 6 temas de la clase</h2>
+            </div>
+            <p class="text-xs md:text-sm text-idatMuted mb-4">En este orden: primero ordenamos las cajas y después las hacemos caber en cualquier pantalla.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="flex gap-3 p-4 rounded-2xl bg-idatLight border-l-4 border-idatYellow items-start">
+                <span class="font-black text-idatYellow text-2xl leading-none">01</span>
+                <div>
+                  <h3 class="font-bold text-sm text-idatDark">CSS Grid</h3>
+                  <p class="text-[11px] text-idatMuted mt-1">La cuadrícula para ordenar tarjetas en filas y columnas.</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 p-4 rounded-2xl bg-idatLight border-l-4 border-amber-500 items-start">
+                <span class="font-black text-amber-500 text-2xl leading-none">02</span>
+                <div>
+                  <h3 class="font-bold text-sm text-idatDark">El meta viewport</h3>
+                  <p class="text-[11px] text-idatMuted mt-1">La línea que hace que el celular muestre el ancho real.</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 p-4 rounded-2xl bg-idatLight border-l-4 border-emerald-500 items-start">
+                <span class="font-black text-emerald-500 text-2xl leading-none">03</span>
+                <div>
+                  <h3 class="font-bold text-sm text-idatDark">Mobile First</h3>
+                  <p class="text-[11px] text-idatMuted mt-1">Pensamos en celular y ajustamos con <code>max-width</code>.</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 p-4 rounded-2xl bg-idatLight border-l-4 border-blue-500 items-start">
+                <span class="font-black text-blue-500 text-2xl leading-none">04</span>
+                <div>
+                  <h3 class="font-bold text-sm text-idatDark">Media Queries</h3>
+                  <p class="text-[11px] text-idatMuted mt-1">La sintaxis y los cortes que usaremos en clase.</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 p-4 rounded-2xl bg-idatLight border-l-4 border-purple-500 items-start">
+                <span class="font-black text-purple-500 text-2xl leading-none">05</span>
+                <div>
+                  <h3 class="font-bold text-sm text-idatDark">rem y html 16px</h3>
+                  <p class="text-[11px] text-idatMuted mt-1">Una medida base que escala todo el sitio.</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3 p-4 rounded-2xl bg-idatLight border-l-4 border-idatDark items-start">
+                <span class="font-black text-idatDark text-2xl leading-none">06</span>
+                <div>
+                  <h3 class="font-bold text-sm text-idatDark">Taller práctico</h3>
+                  <p class="text-[11px] text-idatMuted mt-1">Grid + max-width + rem en una página real.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 p-3 bg-idatDark text-white rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+              <div class="flex items-center gap-3">
+                <span class="bg-amber-500 text-idatDark font-black text-[10px] px-2 py-1 rounded uppercase tracking-wider flex-shrink-0">Hito</span>
+                <p class="text-[11px] md:text-xs text-gray-300"><strong class="text-idatYellow">Entrega Preliminar:</strong> al cierre de la sesión publicas tu proyecto adaptado y recibes feedback.</p>
+              </div>
+              <span class="text-[11px] font-mono text-gray-500 flex-shrink-0">2 horas · Bloque 2 · CSS Avanzado</span>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs text-idatMuted flex-shrink-0">
+            <span>Grid y Diseño Adaptable — Sesión 19</span>
+            <span class="font-semibold text-idatDark">IDAT · Desarrollo Web 2026</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 3 · CSS GRID (CONCEPTO)                                       -->
+      <!-- ============================================================ -->
+      <div id="slide-3" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">TEMA 1</span>
+                <h2 class="text-xl md:text-2xl font-black text-idatDark uppercase tracking-tight">CSS Grid: la cuadrícula que ordena todo</h2>
+              </div>
+              <span class="text-xs text-idatMuted font-bold uppercase hidden md:block">display: grid</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              <div class="md:col-span-5 flex flex-col justify-center gap-3">
+                <p class="text-gray-600 text-xs md:text-sm leading-relaxed">
+                  Imagina una <strong>hoja de Excel</strong> dentro de tu página: filas y columnas. A esa hoja le decimos <code>display: grid</code> y cada hijo cae automáticamente en una celda.
+                </p>
+
+                <div class="space-y-2 text-[11px]">
+                  <div class="p-2.5 bg-amber-50 border-l-4 border-idatYellow rounded-xl">
+                    <strong class="block mb-0.5">1. El padre manda</strong>
+                    <p class="text-gray-600">Igual que en Flexbox: la cuadrícula se declara en el <strong>contenedor</strong>, no en las tarjetas.</p>
+                  </div>
+                  <div class="p-2.5 bg-blue-50 border-l-4 border-blue-500 rounded-xl">
+                    <strong class="block mb-0.5">2. Primero las columnas</strong>
+                    <p class="text-gray-600"><code>1fr</code> significa "una fracción del espacio libre". Tres <code>1fr</code> = tres columnas iguales.</p>
+                  </div>
+                  <div class="p-2.5 bg-emerald-50 border-l-4 border-emerald-500 rounded-xl">
+                    <strong class="block mb-0.5">3. <code>gap</code> separa sin márgenes</strong>
+                    <p class="text-gray-600">Un solo valor y las celdas quedan parejas, sin tocar cada tarjeta.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="md:col-span-7 flex flex-col gap-2">
+                <div class="bg-idatLight rounded-2xl border border-gray-200 p-3">
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2 bg-idatDark text-idatYellow rounded-lg p-3 text-[10px] font-bold text-center">Destacada · ocupa 2 columnas</div>
+                    <div class="bg-white border border-gray-300 rounded-lg p-3 text-[10px] text-center text-idatMuted">celda 3</div>
+                    <div class="bg-white border border-gray-300 rounded-lg p-3 text-[10px] text-center text-idatMuted">celda 4</div>
+                    <div class="bg-white border border-gray-300 rounded-lg p-3 text-[10px] text-center text-idatMuted">celda 5</div>
+                    <div class="bg-white border border-gray-300 rounded-lg p-3 text-[10px] text-center text-idatMuted">celda 6</div>
+                  </div>
+                  <div class="flex justify-between text-[9px] text-idatMuted mt-2">
+                    <span>3 columnas · 1fr cada una</span>
+                    <span>gap: 8px</span>
+                  </div>
+                </div>
+
+                <div class="bg-idatDark text-gray-100 rounded-2xl p-4 font-mono text-[11px] relative overflow-hidden flex-1">
+                  <div class="absolute right-3 top-3 text-[10px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded font-sans uppercase">estilos.css</div>
+                  <div class="text-gray-500">&lt;!-- HTML --&gt;</div>
+                  <div>&lt;<span class="text-blue-400">div</span> <span class="text-yellow-400">class</span>="<span class="text-green-400">galeria</span>"&gt;</div>
+                  <div class="pl-4">&lt;<span class="text-blue-400">div</span> <span class="text-yellow-400">class</span>="<span class="text-green-400">destacada</span>"&gt;1&lt;/<span class="text-blue-400">div</span>&gt;</div>
+                  <div class="pl-4">&lt;<span class="text-blue-400">div</span>&gt;2&lt;/<span class="text-blue-400">div</span>&gt;</div>
+                  <div class="pl-4 text-gray-500">…</div>
+                  <div>&lt;/<span class="text-blue-400">div</span>&gt;</div>
+
+                  <div class="text-gray-500 pt-2">/* CSS */</div>
+                  <div><span class="text-yellow-400 font-bold">.galeria</span> {</div>
+                  <div class="pl-5 text-green-400 font-bold">display: grid;</div>
+                  <div class="pl-5 text-green-400">grid-template-columns: repeat(3, 1fr);</div>
+                  <div class="pl-5 text-green-400">gap: 16px;</div>
+                  <div>}</div>
+                  <div><span class="text-yellow-400 font-bold">.destacada</span> {</div>
+                  <div class="pl-5 text-green-400">grid-column: span 2; <span class="text-gray-500">/* 2 celdas */</span></div>
+                  <div>}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-2 p-2 bg-idatDark text-white rounded-xl text-[11px] flex items-center gap-2">
+              <span class="text-base">💡</span>
+              <span><strong class="text-idatYellow">Grid vs Flexbox:</strong> Flexbox ordena en <em>una</em> dirección (fila o columna). Grid ordena en <strong>filas y columnas al mismo tiempo</strong>. Para galerías de tarjetas, Grid es el rey.</span>
+            </div>
+          </div>
+
+          <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs text-idatMuted flex-shrink-0">
+            <span>Tema 1: ordenar el contenido</span>
+            <span class="hidden md:inline">repeat(3, 1fr) · gap · span 2</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 4 · GRID INTERACTIVO                                          -->
+      <!-- ============================================================ -->
+      <div id="slide-4" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full justify-between">
+          <div class="flex items-center justify-between mb-2 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">TEMA 1 · EN VIVO</span>
+              <h2 class="text-lg md:text-xl font-black text-idatDark uppercase tracking-tight">Juega con las columnas del Grid</h2>
+            </div>
+            <span class="text-[11px] text-idatMuted font-bold uppercase hidden md:block">Haz clic y observa</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch flex-1 min-h-0">
+            <div class="md:col-span-4 flex flex-col justify-center gap-3">
+              <p class="text-[11px] md:text-xs text-idatMuted leading-relaxed">
+                Cambia cuántas columnas quieres. Las tarjetas <strong>se reparten solas</strong>; tú no mueves ni una.
+              </p>
+
+              <div class="grid grid-cols-2 gap-1.5">
+                <button onclick="setGridCols(1)" data-cols="1" class="grid-col-btn text-[11px] font-bold px-2 py-2 rounded-lg bg-idatLight border border-gray-300">1 columna</button>
+                <button onclick="setGridCols(2)" data-cols="2" class="grid-col-btn text-[11px] font-bold px-2 py-2 rounded-lg bg-idatLight border border-gray-300">2 columnas</button>
+                <button onclick="setGridCols(3)" data-cols="3" class="grid-col-btn text-[11px] font-bold px-2 py-2 rounded-lg bg-idatLight border border-gray-300">3 columnas</button>
+                <button onclick="setGridCols(4)" data-cols="4" class="grid-col-btn text-[11px] font-bold px-2 py-2 rounded-lg bg-idatLight border border-gray-300">4 columnas</button>
+              </div>
+
+              <div class="bg-idatDark text-white rounded-2xl p-3">
+                <div class="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Tu CSS ahora</div>
+                <div id="grid-code" class="font-mono text-[11px] text-green-400 break-words">grid-template-columns: repeat(3, 1fr);</div>
+                <div class="mt-2 pt-2 border-t border-gray-800 text-[10px] text-gray-400">
+                  Columnas activas: <strong id="grid-cols-label" class="text-idatYellow">3</strong>
+                </div>
+              </div>
+
+              <div class="p-2.5 bg-emerald-50 border-l-4 border-emerald-500 rounded-xl text-[10.5px] text-emerald-950">
+                💡 Con <code>repeat(auto-fit, minmax(220px, 1fr))</code> el Grid <strong>calcula solo</strong> cuántas columnas caben. Es el truco más usado para tarjetas.
+              </div>
+            </div>
+
+            <div class="md:col-span-8 bg-gray-50 border border-gray-200 rounded-2xl p-3 flex flex-col min-h-[300px]">
+              <div class="flex items-center justify-between mb-2 flex-shrink-0">
+                <span class="text-[10px] font-bold text-idatMuted uppercase tracking-wider">Vista previa</span>
+                <span class="text-[10px] font-mono text-idatMuted">display: grid; gap: 8px;</span>
+              </div>
+              <div class="flex-1 flex items-center justify-center">
+                <div id="grid-demo" class="grid-demo w-full h-full">
+                  <div class="bg-white border border-gray-200 rounded-xl p-3 text-center shadow-sm"><span class="text-lg block">🖼️</span><p class="text-[10px] font-bold text-idatDark mt-1">Tarjeta 1</p></div>
+                  <div class="bg-white border border-gray-200 rounded-xl p-3 text-center shadow-sm"><span class="text-lg block">🖼️</span><p class="text-[10px] font-bold text-idatDark mt-1">Tarjeta 2</p></div>
+                  <div class="bg-white border border-gray-200 rounded-xl p-3 text-center shadow-sm"><span class="text-lg block">🖼️</span><p class="text-[10px] font-bold text-idatDark mt-1">Tarjeta 3</p></div>
+                  <div class="bg-white border border-gray-200 rounded-xl p-3 text-center shadow-sm"><span class="text-lg block">🖼️</span><p class="text-[10px] font-bold text-idatDark mt-1">Tarjeta 4</p></div>
+                  <div class="bg-white border border-gray-200 rounded-xl p-3 text-center shadow-sm"><span class="text-lg block">🖼️</span><p class="text-[10px] font-bold text-idatDark mt-1">Tarjeta 5</p></div>
+                  <div class="bg-white border border-gray-200 rounded-xl p-3 text-center shadow-sm"><span class="text-lg block">🖼️</span><p class="text-[10px] font-bold text-idatDark mt-1">Tarjeta 6</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 5 · META VIEWPORT                                             -->
+      <!-- ============================================================ -->
+      <div id="slide-5" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">TEMA 2</span>
+                <h2 class="text-xl md:text-2xl font-black text-idatDark uppercase tracking-tight">El meta viewport: la pieza que falta</h2>
+              </div>
+              <span class="text-xs text-idatMuted font-bold uppercase hidden md:block">Sin esto, nada funciona</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              <div class="md:col-span-6 flex flex-col justify-between text-xs md:text-sm">
+                <p class="text-gray-600 leading-relaxed mb-3">
+                  Si abres tu web en el celular y todo se ve <strong>diminuto</strong>, como una foto alejada, no es culpa de tu CSS: el navegador simula una pantalla de <strong>980px</strong> y aleja el zoom para que "quepa".
+                </p>
+
+                <div class="space-y-2 text-xs mb-3">
+                  <div class="p-2.5 bg-red-50 border-l-4 border-red-500 rounded-xl text-red-950">
+                    <strong class="block mb-0.5">❌ Sin la etiqueta:</strong>
+                    <p class="text-[11px] text-gray-600 leading-relaxed">El móvil asume 980px de ancho. Tus media queries de celular nunca se activan y el usuario tiene que hacer zoom con los dedos.</p>
+                  </div>
+                  <div class="p-2.5 bg-emerald-50 border-l-4 border-emerald-500 rounded-xl text-emerald-950">
+                    <strong class="block mb-0.5">✅ Con la etiqueta:</strong>
+                    <p class="text-[11px] text-gray-600 leading-relaxed">El layout pasa a medir el ancho real del teléfono (375px, 390px…). Recién ahí <code>max-width: 768px</code> hace su trabajo.</p>
+                  </div>
+                  <div class="p-2.5 bg-amber-50 border-l-4 border-idatYellow rounded-xl text-idatDark">
+                    <strong class="block mb-0.5">⚠️ No bloquees el zoom:</strong>
+                    <p class="text-[11px] text-gray-600 leading-relaxed">Evita <code>user-scalable=no</code> y <code>maximum-scale=1</code>. Rompen la accesibilidad.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="md:col-span-6 bg-idatDark text-gray-100 rounded-2xl p-5 font-mono text-xs overflow-auto custom-scrollbar dark-scroll shadow-inner relative flex flex-col justify-center min-h-[230px]">
+                <div class="absolute right-3 top-3 text-[10px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded font-sans uppercase">index.html</div>
+
+                <div class="space-y-1.5 mb-3">
+                  <div class="text-gray-500">&lt;!DOCTYPE html&gt;</div>
+                  <div>&lt;<span class="text-blue-400">html</span> <span class="text-yellow-400">lang</span>="<span class="text-green-400">es</span>"&gt;</div>
+                  <div>&lt;<span class="text-blue-400">head</span>&gt;</div>
+                  <div class="pl-5">&lt;<span class="text-blue-400">meta</span> <span class="text-yellow-400">charset</span>="<span class="text-green-400">UTF-8</span>"&gt;</div>
+                  <div class="pl-5 bg-yellow-500/10 border border-yellow-500/40 rounded px-2 py-1">
+                    &lt;<span class="text-blue-400">meta</span> <span class="text-yellow-400">name</span>="<span class="text-green-400">viewport</span>"<br>
+                    <span class="pl-4"><span class="text-yellow-400">content</span>="<span class="text-green-400">width=device-width,</span></span><br>
+                    <span class="pl-4"><span class="text-green-400">initial-scale=1.0</span></span>"&gt;
+                  </div>
+                  <div class="pl-5">&lt;<span class="text-blue-400">title</span>&gt;Mi Proyecto&lt;/<span class="text-blue-400">title</span>&gt;</div>
+                  <div>&lt;/<span class="text-blue-400">head</span>&gt;</div>
+                </div>
+
+                <div class="bg-gray-800/80 p-3 rounded-xl border border-gray-700 text-[11px] font-sans text-gray-300">
+                  <strong class="text-idatYellow block mb-1">📌 En palabras simples:</strong>
+                  <code class="text-[10px]">width=device-width</code> → usa el ancho real de la pantalla.<br>
+                  <code class="text-[10px]">initial-scale=1.0</code> → arranca sin zoom.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-2 border-t border-gray-100 flex justify-between text-xs text-idatMuted flex-shrink-0">
+            <span>Tema 2: habilitar la pantalla real</span>
+            <span class="hidden md:inline">&lt;meta name="viewport"&gt;</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 6 · MOBILE FIRST + MAX-WIDTH                                  -->
+      <!-- ============================================================ -->
+      <div id="slide-6" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">TEMA 3</span>
+                <h2 class="text-xl md:text-2xl font-black text-idatDark uppercase tracking-tight">Mobile First: todos los ajustes con max-width</h2>
+              </div>
+              <span class="text-xs text-idatMuted font-bold uppercase hidden md:block">De mayor a menor</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              <div class="md:col-span-5 flex flex-col justify-center gap-2.5">
+                <p class="text-gray-600 text-xs md:text-sm leading-relaxed">
+                  En clase trabajamos así: escribimos los estilos <strong>base</strong> (los de la pantalla grande) y dentro de <strong>una sola sección de media queries</strong> vamos corrigiendo lo que se rompe al achicar. Así todos los cambios quedan en un mismo lugar y es fácil revisarlos.
+                </p>
+
+                <div class="space-y-1.5">
+                  <div class="flex items-center gap-2">
+                    <span class="w-16 h-7 rounded-lg bg-idatDark text-idatYellow text-[9px] font-black flex items-center justify-center flex-shrink-0">BASE</span>
+                    <div class="flex-1 bg-idatLight rounded-lg px-2.5 py-1.5 text-[11px] text-idatDark font-semibold">Escritorio: 3 columnas · menú en fila</div>
+                  </div>
+                  <div class="flex items-center gap-2 pl-2">
+                    <span class="w-16 h-7 rounded-lg bg-amber-600 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">≤ 1024</span>
+                    <div class="flex-1 bg-idatLight rounded-lg px-2.5 py-1.5 text-[11px] text-idatDark">2 columnas · márgenes más chicos</div>
+                  </div>
+                  <div class="flex items-center gap-2 pl-4">
+                    <span class="w-16 h-7 rounded-lg bg-amber-500 text-idatDark text-[9px] font-black flex items-center justify-center flex-shrink-0">≤ 768</span>
+                    <div class="flex-1 bg-idatLight rounded-lg px-2.5 py-1.5 text-[11px] text-idatDark">Menú en columna · 1 columna</div>
+                  </div>
+                  <div class="flex items-center gap-2 pl-6">
+                    <span class="w-16 h-7 rounded-lg bg-idatDark text-idatYellow text-[9px] font-black flex items-center justify-center flex-shrink-0">≤ 480</span>
+                    <div class="flex-1 bg-idatLight rounded-lg px-2.5 py-1.5 text-[11px] text-idatDark">Botones a lo ancho · texto más chico</div>
+                  </div>
+                </div>
+
+                <div class="p-2.5 bg-blue-50 border-l-4 border-blue-500 rounded-xl text-[10.5px] text-blue-950 leading-relaxed">
+                  <strong>¿min-width o max-width?</strong> Son dos caminos válidos: <code>min-width</code> parte del celular y crece; <code>max-width</code> parte del escritorio y achica. En clase usamos <strong><code>max-width</code></strong> porque concentra todos los ajustes en un solo bloque.
+                </div>
+              </div>
+
+              <div class="md:col-span-7 bg-idatDark text-gray-100 rounded-2xl p-4 font-mono text-[11px] overflow-auto custom-scrollbar dark-scroll shadow-inner relative flex flex-col justify-center min-h-[250px]">
+                <div class="absolute right-3 top-3 text-[10px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded font-sans uppercase">estilos.css</div>
+
+                <div class="space-y-1">
+                  <div class="text-gray-500">/* 1. BASE: la pantalla grande */</div>
+                  <div><span class="text-yellow-400 font-bold">.tarjetas</span> {</div>
+                  <div class="pl-5 text-green-400">display: grid;</div>
+                  <div class="pl-5 text-green-400">grid-template-columns: repeat(3, 1fr);</div>
+                  <div class="pl-5 text-green-400">gap: 16px;</div>
+                  <div>}</div>
+
+                  <div class="text-gray-500 pt-2">/* 2. Desde acá, todo se ajusta con max-width */</div>
+                  <div><span class="text-purple-400">@media</span> (<span class="text-sky-400">max-width</span>: <span class="text-amber-300">1024px</span>) {</div>
+                  <div class="pl-5"><span class="text-yellow-400">.tarjetas</span> { <span class="text-green-400">grid-template-columns: repeat(2, 1fr);</span> }</div>
+                  <div>}</div>
+
+                  <div><span class="text-purple-400">@media</span> (<span class="text-sky-400">max-width</span>: <span class="text-amber-300">768px</span>) {</div>
+                  <div class="pl-5"><span class="text-yellow-400">.tarjetas</span> { <span class="text-green-400">grid-template-columns: 1fr;</span> }</div>
+                  <div class="pl-5"><span class="text-yellow-400">.menu</span> { <span class="text-green-400">flex-direction: column;</span> }</div>
+                  <div>}</div>
+
+                  <div><span class="text-purple-400">@media</span> (<span class="text-sky-400">max-width</span>: <span class="text-amber-300">480px</span>) {</div>
+                  <div class="pl-5"><span class="text-yellow-400">.menu a</span> { <span class="text-green-400">width: 100%;</span> }</div>
+                  <div>}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-2 border-t border-gray-100 flex justify-between text-xs text-idatMuted flex-shrink-0">
+            <span>Tema 3: una sola sección de ajustes</span>
+            <span class="hidden md:inline">Ordena siempre de 1024 → 768 → 480</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 7 · SINTAXIS DE MEDIA QUERIES                                 -->
+      <!-- ============================================================ -->
+      <div id="slide-7" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">TEMA 4</span>
+                <h2 class="text-xl md:text-2xl font-black text-idatDark uppercase tracking-tight">Media Queries: anatomía de un @media</h2>
+              </div>
+              <span class="text-xs text-idatMuted font-bold uppercase hidden md:block">el "si" del CSS</span>
+            </div>
+
+            <div class="bg-idatLight border border-gray-200 rounded-2xl p-4 mb-3">
+              <div class="font-mono text-[13px] md:text-base text-idatDark flex flex-wrap items-baseline gap-x-2">
+                <span class="text-purple-600 font-bold">@media</span>
+                <span class="text-sky-700">(max-width:</span>
+                <span class="text-amber-600 font-bold">768px</span><span class="text-sky-700">)</span>
+                <span class="font-bold">{</span>
+                <span class="text-gray-500 text-xs md:text-sm">…reglas CSS…</span>
+                <span class="font-bold">}</span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3 text-[11px]">
+                <div class="bg-white rounded-lg px-2.5 py-1.5 border-l-4 border-purple-500">
+                  <strong class="text-purple-700 font-mono">@media</strong>
+                  <p class="text-gray-600 mt-0.5">Abre el bloque condicional.</p>
+                </div>
+                <div class="bg-white rounded-lg px-2.5 py-1.5 border-l-4 border-sky-500">
+                  <strong class="text-sky-700 font-mono">(max-width: 768px)</strong>
+                  <p class="text-gray-600 mt-0.5">La condición: "si la pantalla mide <strong>768px o menos</strong>".</p>
+                </div>
+                <div class="bg-white rounded-lg px-2.5 py-1.5 border-l-4 border-amber-500">
+                  <strong class="text-amber-700 font-mono">{ … }</strong>
+                  <p class="text-gray-600 mt-0.5">Lo que se aplica <strong>solo</strong> si se cumple.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <h3 class="text-[11px] font-black uppercase tracking-wider text-idatMuted mb-1.5">Los 4 operadores que importan</h3>
+                <div class="space-y-1.5 text-[11px]">
+                  <div class="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                    <code class="bg-idatDark text-idatYellow px-1.5 rounded font-bold flex-shrink-0">and</code>
+                    <p class="text-gray-600">Se cumplen <strong>las dos</strong>: <code class="text-[10px]">(min-width:481px) and (max-width:768px)</code></p>
+                  </div>
+                  <div class="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                    <code class="bg-idatDark text-idatYellow px-1.5 rounded font-bold flex-shrink-0">,</code>
+                    <p class="text-gray-600">Basta <strong>una</strong>: <code class="text-[10px]">(max-width:480px), (orientation:landscape)</code></p>
+                  </div>
+                  <div class="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                    <code class="bg-idatDark text-idatYellow px-1.5 rounded font-bold flex-shrink-0">not</code>
+                    <p class="text-gray-600">Niega la consulta: <code class="text-[10px]">not print</code></p>
+                  </div>
+                  <div class="flex items-start gap-2 p-2 bg-white rounded-lg border border-gray-200">
+                    <code class="bg-idatDark text-idatYellow px-1.5 rounded font-bold flex-shrink-0">only</code>
+                    <p class="text-gray-600">Comando heredado: <code class="text-[10px]">only screen</code></p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <div>
+                  <h3 class="text-[11px] font-black uppercase tracking-wider text-idatMuted mb-1.5">Condiciones que puedes consultar</h3>
+                  <div class="flex flex-wrap gap-1.5">
+                    <span class="text-[10px] font-mono bg-idatLight border border-gray-200 px-2 py-0.5 rounded-full">max-width</span>
+                    <span class="text-[10px] font-mono bg-idatLight border border-gray-200 px-2 py-0.5 rounded-full">min-width</span>
+                    <span class="text-[10px] font-mono bg-idatLight border border-gray-200 px-2 py-0.5 rounded-full">orientation</span>
+                    <span class="text-[10px] font-mono bg-idatLight border border-gray-200 px-2 py-0.5 rounded-full">prefers-color-scheme</span>
+                    <span class="text-[10px] font-mono bg-idatLight border border-gray-200 px-2 py-0.5 rounded-full">hover / pointer</span>
+                    <span class="text-[10px] font-mono bg-idatLight border border-gray-200 px-2 py-0.5 rounded-full">print</span>
+                  </div>
+                </div>
+
+                <div class="bg-idatDark text-gray-100 rounded-xl p-3 font-mono text-[11px]">
+                  <div class="text-[9px] text-gray-400 uppercase font-sans mb-1.5 tracking-wider">Sintaxis moderna por rangos (CSS 4)</div>
+                  <div class="text-gray-500">/* celular: 480px o menos */</div>
+                  <div><span class="text-purple-400">@media</span> (<span class="text-sky-400">width</span> &lt;= <span class="text-amber-300">480px</span>) { … }</div>
+                  <div class="mt-2 text-gray-500">/* modo oscuro, sin JS */</div>
+                  <div><span class="text-purple-400">@media</span> (<span class="text-sky-400">prefers-color-scheme</span>: dark) { … }</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-2 border-t border-gray-100 flex justify-between text-xs text-idatMuted flex-shrink-0">
+            <span>Tema 4: regla + condición + bloque</span>
+            <span class="hidden md:inline">@media (max-width: 768px) { … }</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 8 · CORTES Y ORDEN                                            -->
+      <!-- ============================================================ -->
+      <div id="slide-8" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">TEMA 4 · EN PRÁCTICA</span>
+                <h2 class="text-xl md:text-2xl font-black text-idatDark uppercase tracking-tight">Nuestros 4 cortes y el orden del código</h2>
+              </div>
+              <span class="text-xs text-idatMuted font-bold uppercase hidden md:block">1024 · 768 · 480</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              <div class="md:col-span-7">
+                <div class="overflow-hidden rounded-xl border border-gray-200">
+                  <table class="w-full text-[11px] md:text-xs text-left">
+                    <thead class="bg-idatDark text-white">
+                      <tr>
+                        <th class="px-2.5 py-1.5 font-bold">Pantalla</th>
+                        <th class="px-2.5 py-1.5 font-bold">Corte</th>
+                        <th class="px-2.5 py-1.5 font-bold">Qué cambia</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-gray-600">
+                      <tr class="bg-idatLight/60">
+                        <td class="px-2.5 py-1.5 font-bold text-idatDark">Escritorio</td>
+                        <td class="px-2.5 py-1.5 font-mono">sin media query</td>
+                        <td class="px-2.5 py-1.5">3 columnas · menú en fila · contenedor centrado</td>
+                      </tr>
+                      <tr>
+                        <td class="px-2.5 py-1.5 font-bold text-idatDark">Laptop / tablet</td>
+                        <td class="px-2.5 py-1.5 font-mono text-amber-700">max-width: 1024px</td>
+                        <td class="px-2.5 py-1.5">2 columnas · menos padding lateral</td>
+                      </tr>
+                      <tr class="bg-idatLight/60">
+                        <td class="px-2.5 py-1.5 font-bold text-idatDark">Tablet vertical</td>
+                        <td class="px-2.5 py-1.5 font-mono text-amber-700">max-width: 768px</td>
+                        <td class="px-2.5 py-1.5">1 columna · menú apilado</td>
+                      </tr>
+                      <tr>
+                        <td class="px-2.5 py-1.5 font-bold text-idatDark">Celular</td>
+                        <td class="px-2.5 py-1.5 font-mono text-amber-700">max-width: 480px</td>
+                        <td class="px-2.5 py-1.5">Botones a lo ancho · tipografía más chica</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="mt-2 p-2.5 bg-red-50 border-l-4 border-red-500 rounded-xl text-[11px] text-red-950">
+                  ⚠️ <strong>El orden importa:</strong> con <code>max-width</code>, escribe siempre de <strong>mayor a menor</strong> (1024 → 768 → 480). Si pones 480 antes que 1024, la regla de 1024 pisa a la de 480 y el celular se ve mal.
+                </div>
+              </div>
+
+              <div class="md:col-span-5 flex flex-col gap-2">
+                <div class="bg-idatDark text-gray-100 rounded-2xl p-3.5 font-mono text-[10.5px] flex-1 flex flex-col justify-center">
+                  <div class="text-[9px] text-gray-400 uppercase font-sans mb-1.5 tracking-wider">Así se ve tu hoja de estilos</div>
+                  <div class="text-gray-500">/* base: escritorio */</div>
+                  <div><span class="text-yellow-400">.contenedor</span> { <span class="text-green-400">padding: 48px;</span> }</div>
+                  <div class="text-emerald-400 mt-1.5">/* ✅ mayor → menor */</div>
+                  <div><span class="text-purple-400">@media</span> (<span class="text-sky-400">max-width</span>: <span class="text-amber-300">1024px</span>) {</div>
+                  <div class="pl-4"><span class="text-yellow-400">.contenedor</span> { <span class="text-green-400">padding: 32px;</span> }</div>
+                  <div>}</div>
+                  <div><span class="text-purple-400">@media</span> (<span class="text-sky-400">max-width</span>: <span class="text-amber-300">768px</span>) {</div>
+                  <div class="pl-4"><span class="text-yellow-400">.contenedor</span> { <span class="text-green-400">padding: 24px;</span> }</div>
+                  <div>}</div>
+                  <div><span class="text-purple-400">@media</span> (<span class="text-sky-400">max-width</span>: <span class="text-amber-300">480px</span>) {</div>
+                  <div class="pl-4"><span class="text-yellow-400">.contenedor</span> { <span class="text-green-400">padding: 16px;</span> }</div>
+                  <div>}</div>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-xl p-2.5 text-[10.5px] text-gray-700">
+                  🔍 <strong>Cómo probarlo:</strong> F12 → <kbd class="px-1 bg-gray-100 border border-gray-300 rounded font-mono">Ctrl</kbd> + <kbd class="px-1 bg-gray-100 border border-gray-300 rounded font-mono">Shift</kbd> + <kbd class="px-1 bg-gray-100 border border-gray-300 rounded font-mono">M</kbd> y arrastra el ancho a 375, 768 y 1440.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-2 border-t border-gray-100 flex justify-between text-xs text-idatMuted flex-shrink-0">
+            <span>Tema 4: cortes estables para todo el curso</span>
+            <span class="hidden md:inline">Corta cuando el contenido se vea mal, no por marca</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 9 · SIMULADOR                                                 -->
+      <!-- ============================================================ -->
+      <div id="slide-9" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full justify-between">
+          <div class="flex items-center justify-between mb-2 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">LABORATORIO EN VIVO</span>
+              <h2 class="text-lg md:text-xl font-black text-idatDark uppercase tracking-tight">Simulador: achica la pantalla y mira la media query</h2>
+            </div>
+            <button onclick="setSimWidth(1280)" class="text-[11px] bg-idatDark text-white px-3 py-1.5 rounded-full font-bold hover:bg-idatYellow hover:text-idatDark transition-colors">
+              ↺ Reiniciar
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch flex-1 min-h-0">
+            <div class="md:col-span-4 flex flex-col justify-center gap-2.5">
+              <p class="text-[11px] md:text-xs text-idatMuted leading-relaxed">
+                Arrastra el control hacia la <strong>izquierda</strong> (achicar) y observa cómo se activan los cortes de <code>max-width</code>.
+              </p>
+
+              <div class="flex gap-1.5 flex-wrap">
+                <button onclick="setSimWidth(1280)" data-bp="1280" class="sim-preset bp-chip text-[10px] font-bold px-2 py-1 rounded-lg bg-idatLight border border-gray-300">🖥️ 1280</button>
+                <button onclick="setSimWidth(1024)" data-bp="1024" class="sim-preset bp-chip text-[10px] font-bold px-2 py-1 rounded-lg bg-idatLight border border-gray-300">💻 1024</button>
+                <button onclick="setSimWidth(768)" data-bp="768" class="sim-preset bp-chip text-[10px] font-bold px-2 py-1 rounded-lg bg-idatLight border border-gray-300">📲 768</button>
+                <button onclick="setSimWidth(480)" data-bp="480" class="sim-preset bp-chip text-[10px] font-bold px-2 py-1 rounded-lg bg-idatLight border border-gray-300">📱 480</button>
+                <button onclick="setSimWidth(375)" data-bp="375" class="sim-preset bp-chip text-[10px] font-bold px-2 py-1 rounded-lg bg-idatLight border border-gray-300">📱 375</button>
+              </div>
+
+              <div class="bg-idatLight rounded-2xl border border-gray-200 p-3">
+                <div class="flex justify-between text-[10px] font-bold text-idatMuted mb-1">
+                  <span>320px</span>
+                  <span id="sim-width-label" class="text-idatDark font-mono">1280px</span>
+                  <span>1280px</span>
+                </div>
+                <input id="sim-range" type="range" min="320" max="1280" step="1" value="1280" class="sim-range w-full" oninput="setSimWidth(this.value)">
+              </div>
+
+              <div class="bg-idatDark text-white rounded-2xl p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[9px] font-bold uppercase tracking-widest text-gray-400">Media query activa</span>
+                  <span id="sim-device" class="text-[10px] font-black text-idatYellow">Escritorio</span>
+                </div>
+                <div id="sim-mq" class="font-mono text-[10px] text-green-400 leading-relaxed break-words">Sin media query · estilos base</div>
+                <div class="mt-2 pt-2 border-t border-gray-800 text-[10px] text-gray-400">
+                  Columnas: <strong id="sim-cols-label" class="text-white">3</strong> ·
+                  Menú: <strong id="sim-menu-label" class="text-white">en fila</strong>
+                </div>
+              </div>
+            </div>
+
+            <div id="sim-stage" class="device-stage md:col-span-8 border border-gray-200 rounded-2xl p-3 flex items-center justify-center overflow-hidden min-h-[300px]">
+              <div id="sim-frame" class="sim-frame sim-base bg-white rounded-xl shadow-lg border border-gray-300 overflow-hidden" style="width:1280px;">
+                <div class="bg-idatDark px-2 py-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span class="ml-2 text-[7px] text-gray-400 font-mono truncate">midominio.com</span>
+                </div>
+
+                <div class="p-2.5">
+                  <div class="lab-nav bg-idatDark text-white rounded-lg px-2.5 py-2">
+                    <div class="flex items-center justify-between w-full">
+                      <span class="flex items-center gap-1">
+                        <span class="bg-idatYellow text-idatDark font-black text-[8px] px-1 py-0.5 rounded">WEB</span>
+                        <span class="text-[10px] font-bold">2026</span>
+                      </span>
+                      <span class="sim-burger flex-col gap-0.5 cursor-pointer">
+                        <span class="w-3 h-[2px] bg-idatYellow block"></span>
+                        <span class="w-3 h-[2px] bg-idatYellow block"></span>
+                        <span class="w-3 h-[2px] bg-idatYellow block"></span>
+                      </span>
+                    </div>
+                    <div class="sim-links text-[10px] text-gray-300 font-medium mt-1.5 pt-1.5 border-t border-gray-700">
+                      <span>Inicio</span><span>Cursos</span><span>Contacto</span>
+                    </div>
+                  </div>
+
+                  <div class="sim-hero mt-2">
+                    <div>
+                      <h1 class="sim-h1 font-black text-idatDark">Tu web,<br>en cualquier pantalla</h1>
+                      <p class="text-[10px] text-idatMuted mt-1 leading-snug">Mismo HTML. El CSS decide cómo se acomoda.</p>
+                      <div class="sim-sidebar mt-1.5 text-[10px] text-gray-500">Contenido lateral visible solo en escritorio.</div>
+                    </div>
+                    <div class="bg-idatYellow rounded-lg h-10 flex items-center justify-center text-[10px] font-black text-idatDark">IMAGEN</div>
+                  </div>
+
+                  <div class="sim-cols mt-2">
+                    <div class="bg-idatLight border border-gray-200 rounded-lg p-2 text-[10px] font-bold text-idatDark text-center">Tarjeta 1</div>
+                    <div class="bg-idatLight border border-gray-200 rounded-lg p-2 text-[10px] font-bold text-idatDark text-center">Tarjeta 2</div>
+                    <div class="bg-idatLight border border-gray-200 rounded-lg p-2 text-[10px] font-bold text-idatDark text-center">Tarjeta 3</div>
+                    <div class="bg-idatLight border border-gray-200 rounded-lg p-2 text-[10px] font-bold text-idatDark text-center">Tarjeta 4</div>
+                    <div class="bg-idatLight border border-gray-200 rounded-lg p-2 text-[10px] font-bold text-idatDark text-center">Tarjeta 5</div>
+                    <div class="bg-idatLight border border-gray-200 rounded-lg p-2 text-[10px] font-bold text-idatDark text-center">Tarjeta 6</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 10 · REM                                                      -->
+      <!-- ============================================================ -->
+      <div id="slide-10" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">TEMA 5</span>
+                <h2 class="text-xl md:text-2xl font-black text-idatDark uppercase tracking-tight">rem y <span class="font-mono text-lg md:text-xl normal-case">html { font-size: 16px }</span></h2>
+              </div>
+              <span class="text-xs text-idatMuted font-bold uppercase hidden md:block">una medida para todo</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              <div class="md:col-span-6 flex flex-col gap-2">
+                <p class="text-gray-600 text-xs md:text-sm leading-relaxed">
+                  <strong>rem</strong> significa "root em": siempre se mide contra el tamaño de letra de la raíz, es decir, del <code>&lt;html&gt;</code>. Si configuras <strong>16px</strong>, entonces <code>1rem = 16px</code> en todo el sitio.
+                </p>
+
+                <div class="bg-idatDark text-gray-100 rounded-2xl p-3.5 font-mono text-[11px]">
+                  <div class="text-[9px] text-gray-400 uppercase font-sans mb-1.5 tracking-wider">Se configura una sola vez</div>
+                  <div class="text-gray-500">/* el tamaño base de TODO el sitio */</div>
+                  <div><span class="text-purple-400">html</span> {</div>
+                  <div class="pl-4"><span class="text-sky-400">font-size</span>: <span class="text-amber-300">16px</span>;</div>
+                  <div>}</div>
+                  <div class="mt-2 text-gray-500">/* de ahí en adelante, todo en rem */</div>
+                  <div><span class="text-yellow-400">h1</span> { <span class="text-sky-400">font-size</span>: <span class="text-amber-300">2.5rem</span>; } <span class="text-gray-500">/* 40px */</span></div>
+                  <div><span class="text-yellow-400">p</span>  { <span class="text-sky-400">font-size</span>: <span class="text-amber-300">1rem</span>; }   <span class="text-gray-500">/* 16px */</span></div>
+                  <div><span class="text-yellow-400">.card</span> { <span class="text-sky-400">padding</span>: <span class="text-amber-300">1.5rem</span>; } <span class="text-gray-500">/* 24px */</span></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                  <div class="p-2 bg-emerald-50 border-l-4 border-emerald-500 rounded-lg">
+                    <strong class="text-emerald-900 block">✅ La ventaja</strong>
+                    <p class="text-gray-600 mt-0.5">Si cambias <code>16px</code> por <code>18px</code>, todo el sitio crece proporcionado: no tocas nada más.</p>
+                  </div>
+                  <div class="p-2 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                    <strong class="text-red-900 block">❌ El error típico</strong>
+                    <p class="text-gray-600 mt-0.5">Poner <code>html { font-size: 10px }</code> para "calcular fácil". Rompe el zoom y la accesibilidad.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="md:col-span-6 flex flex-col gap-2">
+                <div class="bg-idatLight border border-gray-200 rounded-2xl p-3">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[9px] font-bold uppercase tracking-widest text-idatMuted">Calculadora rem → px</span>
+                    <span class="text-[9px] font-mono text-idatDark">1rem = 16px</span>
+                  </div>
+                  <div class="flex items-center justify-center gap-3 mb-2">
+                    <span id="rem-value" class="font-mono font-black text-xl text-idatDark">1.5rem</span>
+                    <span class="text-idatMuted">=</span>
+                    <span id="rem-px" class="font-mono font-black text-xl text-emerald-600">24px</span>
+                  </div>
+                  <input id="rem-range" type="range" min="0.5" max="3" step="0.25" value="1.5" class="sim-range w-full" oninput="setRemValue(this.value)">
+                  <div class="bg-white border border-gray-300 rounded-xl mt-2 px-3 py-2 overflow-hidden">
+                    <p id="rem-sample" class="font-bold text-idatDark leading-tight" style="font-size:1.5rem">Así se ve tu texto</p>
+                  </div>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-xl p-2.5">
+                  <div class="text-[9px] font-bold uppercase tracking-widest text-idatMuted mb-1.5">Tabla rápida (base 16px)</div>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10px] text-gray-600">
+                    <span>0.75rem <span class="text-idatDark font-bold">= 12px</span></span>
+                    <span>1.5rem <span class="text-idatDark font-bold">= 24px</span></span>
+                    <span>1rem <span class="text-idatDark font-bold">= 16px</span></span>
+                    <span>2rem <span class="text-idatDark font-bold">= 32px</span></span>
+                    <span>1.25rem <span class="text-idatDark font-bold">= 20px</span></span>
+                    <span>3rem <span class="text-idatDark font-bold">= 48px</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2.5 pt-2 border-t border-gray-100 flex justify-between text-xs text-idatMuted flex-shrink-0">
+            <span>rem = relativo a la raíz · em = relativo al elemento</span>
+            <span class="hidden md:inline">16px base · 1rem = 16px</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 11 · TALLER PRÁCTICO                                          -->
+      <!-- ============================================================ -->
+      <div id="slide-11" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full justify-between">
+          <div class="flex items-center justify-between mb-2 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="bg-idatYellow text-idatDark font-bold px-2.5 py-0.5 rounded text-xs">TEMA 6 · TALLER</span>
+              <h2 class="text-lg md:text-xl font-black text-idatDark uppercase tracking-tight">Taller: una galería que se adapta sola</h2>
+            </div>
+            <button onclick="toggleExample('nav')" class="text-[11px] bg-idatDark text-white px-3.5 py-1.5 rounded-full font-bold hover:bg-idatYellow hover:text-idatDark transition-colors">
+              💻 Ver Código / Vista Previa
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch flex-1 min-h-0">
+            <div class="flex flex-col justify-start gap-2">
+              <p class="text-idatMuted leading-relaxed text-xs md:text-sm">
+                Vamos a construir la galería de cursos de la academia: <strong>3 tarjetas</strong> en escritorio, 2 en tablet y 1 en celular.
+              </p>
+
+              <div class="space-y-1.5 text-[11px]">
+                <div class="p-2 bg-gray-50 rounded-lg border-l-4 border-idatYellow">
+                  <strong>1.</strong> <code>html { font-size: 16px }</code> y todas las medidas en <strong>rem</strong>.
+                </div>
+                <div class="p-2 bg-gray-50 rounded-lg border-l-4 border-amber-500">
+                  <strong>2.</strong> <code>display: grid</code> + <code>repeat(3, 1fr)</code> + <code>gap</code> para la galería.
+                </div>
+                <div class="p-2 bg-gray-50 rounded-lg border-l-4 border-blue-500">
+                  <strong>3.</strong> <code>@media (max-width: 1024px)</code> → 2 columnas.
+                </div>
+                <div class="p-2 bg-gray-50 rounded-lg border-l-4 border-emerald-500">
+                  <strong>4.</strong> <code>@media (max-width: 768px)</code> → 1 columna y menú apilado.
+                </div>
+                <div class="p-2 bg-gray-50 rounded-lg border-l-4 border-idatDark">
+                  <strong>5.</strong> Probar en DevTools a 1440, 768 y 375 sin scroll horizontal.
+                </div>
+              </div>
+
+              <div class="mt-1 flex gap-1.5">
+                <button onclick="setLabMode('mobile')" id="lab-btn-mobile" class="lab-mode-btn flex-1 text-[10px] font-bold py-1.5 rounded-lg border border-gray-300 bg-idatLight">📱 Móvil (375px)</button>
+                <button onclick="setLabMode('desktop')" id="lab-btn-desktop" class="lab-mode-btn flex-1 text-[10px] font-bold py-1.5 rounded-lg border border-gray-300 bg-idatLight lab-btn-active">💻 Escritorio (1024px+)</button>
+              </div>
+            </div>
+
+            <div class="border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col bg-white h-full min-h-[280px]">
+              <div class="bg-gray-100 px-3 py-1.5 flex justify-between items-center border-b border-gray-200 flex-shrink-0">
+                <span id="label-nav" class="text-[11px] font-bold text-idatDark">Resultado en Vivo</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+              </div>
+
+              <div class="p-3 flex-1 overflow-auto custom-scrollbar flex items-center justify-center bg-gray-50/70">
+                <div id="preview-nav" class="w-full flex justify-center">
+                  <div id="lab-frame" class="lab-frame lab-desktop w-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" style="max-width:100%">
+                    <div class="lab-nav bg-idatDark text-white px-4 py-3">
+                      <div class="flex items-center gap-2">
+                        <span class="bg-idatYellow text-idatDark font-black px-1.5 py-0.5 rounded text-[10px]">IDAT</span>
+                        <span class="text-[11px] font-bold">Web 2026</span>
+                      </div>
+                      <div class="lab-links text-[11px] font-medium text-gray-300">
+                        <span class="hover:text-idatYellow cursor-pointer">Inicio</span>
+                        <span class="hover:text-idatYellow cursor-pointer">Cursos</span>
+                        <span class="hover:text-idatYellow cursor-pointer">Contacto</span>
+                      </div>
+                      <span class="lab-cta bg-idatYellow text-idatDark font-bold text-[10px] px-3 py-1.5 rounded-lg">Matrícula</span>
+                    </div>
+
+                    <div class="p-3">
+                      <p class="text-[10px] font-black text-idatDark uppercase tracking-wider mb-1.5">Nuestros cursos</p>
+                      <div class="lab-cards grid grid-cols-3 gap-2">
+                        <div class="bg-idatLight border border-gray-200 rounded-lg p-2">
+                          <div class="text-sm">🎨</div>
+                          <p class="text-[9px] font-bold text-idatDark mt-0.5">Diseño UI</p>
+                        </div>
+                        <div class="bg-idatLight border border-gray-200 rounded-lg p-2">
+                          <div class="text-sm">⚙️</div>
+                          <p class="text-[9px] font-bold text-idatDark mt-0.5">Frontend</p>
+                        </div>
+                        <div class="bg-idatLight border border-gray-200 rounded-lg p-2">
+                          <div class="text-sm">🚀</div>
+                          <p class="text-[9px] font-bold text-idatDark mt-0.5">Full Stack</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="code-nav" class="hidden w-full h-full font-mono text-[10.5px] text-yellow-400 bg-idatDark p-3 rounded-xl overflow-auto custom-scrollbar dark-scroll">
+                  <pre><span class="text-gray-500">/* 0. Base del sitio */</span>
+<span class="text-purple-400">html</span> { <span class="text-sky-400">font-size</span>: <span class="text-amber-300">16px</span>; }
+
+<span class="text-gray-500">/* 1. Escritorio: 3 columnas */</span>
+<span class="text-yellow-400 font-bold">.galeria</span> {
+  <span class="text-green-400">display: grid;</span>
+  <span class="text-green-400">grid-template-columns: repeat(3, 1fr);</span>
+  <span class="text-green-400">gap: 1rem;</span>
+}
+
+<span class="text-gray-500">/* 2. Tablet: 2 columnas */</span>
+<span class="text-purple-400">@media</span> (<span class="text-sky-400">max-width</span>: <span class="text-amber-300">1024px</span>) {
+  <span class="text-yellow-400">.galeria</span> { <span class="text-green-400">grid-template-columns: repeat(2, 1fr);</span> }
+}
+
+<span class="text-gray-500">/* 3. Celular: 1 columna + menú apilado */</span>
+<span class="text-purple-400">@media</span> (<span class="text-sky-400">max-width</span>: <span class="text-amber-300">768px</span>) {
+  <span class="text-yellow-400">.galeria</span> { <span class="text-green-400">grid-template-columns: 1fr;</span> }
+  <span class="text-yellow-400">.menu</span> { <span class="text-green-400">flex-direction: column;</span> <span class="text-green-400">align-items: stretch;</span> }
+}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 12 · ENTREGA PRELIMINAR                                       -->
+      <!-- ============================================================ -->
+      <div id="slide-12" class="slide w-full bg-white rounded-3xl shadow-xl border border-gray-200 p-6 md:p-10 flex-col justify-between h-full">
+        <div class="flex flex-col h-full overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="bg-amber-500 text-white font-bold px-2.5 py-0.5 rounded text-xs uppercase tracking-wider">HITO ACADÉMICO</span>
+                <h2 class="text-xl md:text-2xl font-black text-idatDark uppercase tracking-tight">Entrega Preliminar del Proyecto</h2>
+              </div>
+              <span class="text-[11px] text-idatMuted font-bold uppercase hidden md:block">Sesión 19 · Semana 10</span>
+            </div>
+
+            <p class="text-xs md:text-sm text-gray-600 mb-3 leading-relaxed">
+              Subes la versión <strong>publicada y adaptable</strong> de tu proyecto. No es el examen: es el avance que el docente revisa para darte correcciones antes de la <strong>Sesión 21</strong> y de la <strong>Evaluación Final (Sesión 24)</strong>.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="bg-idatLight rounded-2xl p-3.5 border-t-4 border-idatYellow">
+                <h3 class="font-black text-xs text-idatDark uppercase tracking-wide mb-2">1 · Estructura con Grid</h3>
+                <ul class="space-y-1.5 text-[11px] text-gray-700">
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span>Galería con <code>display: grid</code> y <code>gap</code>.</span></li>
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span>Columnas con <code>repeat()</code> y <code>1fr</code>, sin anchos fijos.</span></li>
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span>Imágenes fluidas: <code>max-width:100%</code>.</span></li>
+                </ul>
+              </div>
+
+              <div class="bg-idatLight rounded-2xl p-3.5 border-t-4 border-idatDark">
+                <h3 class="font-black text-xs text-idatDark uppercase tracking-wide mb-2">2 · Adaptabilidad</h3>
+                <ul class="space-y-1.5 text-[11px] text-gray-700">
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span>Meta viewport en el <code>&lt;head&gt;</code>.</span></li>
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span>Media queries con <code>max-width</code>: 1024 → 768 → 480.</span></li>
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span>Sin scroll horizontal a 375, 768 y 1440.</span></li>
+                </ul>
+              </div>
+
+              <div class="bg-idatLight rounded-2xl p-3.5 border-t-4 border-amber-500">
+                <h3 class="font-black text-xs text-idatDark uppercase tracking-wide mb-2">3 · Medidas y entrega</h3>
+                <ul class="space-y-1.5 text-[11px] text-gray-700">
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span><code>html { font-size: 16px }</code> y medidas en <code>rem</code>.</span></li>
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span>GitHub Pages activo, sin errores 404.</span></li>
+                  <li class="flex gap-1.5"><span class="text-emerald-600 font-bold flex-shrink-0">✓</span> <span>Enlace entregado en el aula <strong>antes de salir</strong>.</span></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2 items-center text-[10px]">
+              <div class="bg-white border border-gray-200 rounded-xl p-2 text-center">
+                <span class="block text-base mb-0.5">🛠️</span>
+                <strong class="block text-idatDark">1. Ajusta</strong>
+                <span class="text-idatMuted">Grid + max-width</span>
+              </div>
+              <div class="bg-white border border-gray-200 rounded-xl p-2 text-center">
+                <span class="block text-base mb-0.5">🔍</span>
+                <strong class="block text-idatDark">2. Prueba</strong>
+                <span class="text-idatMuted">DevTools 375 / 768 / 1440</span>
+              </div>
+              <div class="bg-white border border-gray-200 rounded-xl p-2 text-center">
+                <span class="block text-base mb-0.5">🚀</span>
+                <strong class="block text-idatDark">3. Publica</strong>
+                <span class="text-idatMuted">push + GitHub Pages</span>
+              </div>
+              <div class="bg-amber-50 border border-amber-300 rounded-xl p-2 text-center">
+                <span class="block text-base mb-0.5">📤</span>
+                <strong class="block text-amber-800">4. Entrega</strong>
+                <span class="text-amber-700">link en el aula</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2.5 pt-2 border-t border-gray-100 flex flex-col md:flex-row justify-between gap-1 text-[11px] text-idatMuted flex-shrink-0">
+            <span>⚠️ Entregar fuera de plazo descuenta puntaje del hito.</span>
+            <span class="font-semibold text-idatDark">Feedback en Sesión 21 · Evaluación Final en Sesión 24</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- 13 · CIERRE                                                   -->
+      <!-- ============================================================ -->
+      <div id="slide-13" class="slide w-full bg-idatDark rounded-3xl shadow-xl border border-gray-900 p-6 md:p-10 flex-col justify-between h-full text-white">
+        <div class="flex flex-col items-center justify-center text-center my-auto">
+          <div class="bg-idatYellow text-idatDark font-black px-6 py-2 rounded-full text-xs md:text-sm tracking-widest uppercase mb-3 animate-bounce">
+            ¡SESIÓN 19 COMPLETADA!
+          </div>
+          <h2 class="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+            Muchas Gracias por <br class="hidden md:block">su Atención
+          </h2>
+          <p class="text-gray-400 mt-2 max-w-2xl text-xs md:text-sm leading-relaxed">
+            Ya puedes ordenar una galería con Grid y hacer que se vea bien en cualquier pantalla usando un solo bloque de media queries con max-width.
+          </p>
+
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-3xl">
+            <div class="bg-gray-800/80 p-4 rounded-2xl border border-gray-700 text-left">
+              <span class="text-idatYellow text-[11px] font-bold uppercase block tracking-wider mb-1.5">TU RESUMEN DE BOLSILLO</span>
+              <ul class="text-[11px] text-gray-300 space-y-1">
+                <li>• <code class="text-idatYellow">display: grid</code> + <code class="text-idatYellow">repeat(3, 1fr)</code> → columnas parejas.</li>
+                <li>• <code class="text-idatYellow">gap</code> → separación sin márgenes.</li>
+                <li>• <code class="text-idatYellow">auto-fit</code> + <code class="text-idatYellow">minmax()</code> → tarjetas que se acomodan solas.</li>
+                <li>• Meta viewport → el celular usa su ancho real.</li>
+                <li>• <code class="text-idatYellow">@media (max-width…)</code> → de 1024 a 480, de mayor a menor.</li>
+                <li>• <code class="text-idatYellow">html { font-size: 16px }</code> + rem → todo escala junto.</li>
+              </ul>
+            </div>
+
+            <div class="bg-gray-800/80 p-4 rounded-2xl border border-gray-700 text-left">
+              <span class="text-idatYellow text-[11px] font-bold uppercase block tracking-wider mb-1.5">PRÓXIMA CLASE: SESIÓN 20</span>
+              <p class="text-[11px] text-gray-300 mb-2 font-medium">Todo esto, pero con un framework que ya lo trae hecho: <strong>Bootstrap</strong>.</p>
+              <ul class="text-[11px] text-gray-300 space-y-1">
+                <li>• <strong>Instalación</strong> por CDN y estructura del proyecto.</li>
+                <li>• <strong>Sistema de rejilla:</strong> Grid con clases listas.</li>
+                <li>• <strong>Utilidades:</strong> espaciados, colores y tipografía.</li>
+                <li>• <strong>Componentes:</strong> botones y alertas sin escribir CSS.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-center gap-2 bg-amber-500/10 border border-amber-500/40 rounded-xl px-4 py-2">
+            <span class="text-base">📌</span>
+            <p class="text-[11px] text-amber-200 text-left"><strong class="text-amber-300">No lo olvides:</strong> la Entrega Preliminar se cierra al terminar esta sesión. Publica el enlace antes de salir.</p>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-2.5 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center text-[11px] text-gray-500 w-full gap-1 flex-shrink-0">
+          <span>Ing. Jhon Chavez • <span class="text-idatYellow">Grid y Diseño Adaptable</span></span>
+          <span>© 2026 IDAT. Todos los derechos reservados.</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="bg-white border-t border-gray-200 px-6 md:px-12 py-3 flex flex-col md:flex-row items-center justify-between gap-4 h-auto md:h-[72px] flex-shrink-0 z-50">
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-idatMuted font-bold tracking-wider uppercase">Progreso actual:</span>
+      <div class="flex items-center gap-1.5 bg-idatLight border border-gray-200 rounded-full px-3 py-1 text-xs font-black text-idatDark">
+        <span id="current-slide-num">1</span> / <span id="total-slides-num">13</span>
+      </div>
+      <span id="slide-title-hint" class="hidden xl:inline text-[11px] text-idatMuted font-medium">Portada</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btn-prev" onclick="changeSlide(-1)" class="bg-idatDark hover:bg-idatYellow hover:text-idatDark text-white p-2.5 rounded-full transition-all duration-200 shadow disabled:opacity-30 disabled:pointer-events-none" title="Diapositiva Anterior">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+
+      <div class="flex items-center gap-1.5 px-2" id="dots-container"></div>
+
+      <button id="btn-next" onclick="changeSlide(1)" class="bg-idatDark hover:bg-idatYellow hover:text-idatDark text-white p-2.5 rounded-full transition-all duration-200 shadow disabled:opacity-30 disabled:pointer-events-none" title="Siguiente Diapositiva">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
+    <div class="hidden lg:flex items-center gap-2 text-xs text-idatMuted">
+      <span class="font-bold">Atajos del teclado:</span>
+      <kbd class="px-2 py-0.5 bg-gray-100 border border-gray-300 rounded text-idatDark font-mono font-bold shadow-sm">←</kbd>
+      <kbd class="px-2 py-0.5 bg-gray-100 border border-gray-300 rounded text-idatDark font-mono font-bold shadow-sm">→</kbd>
+    </div>
+  </footer>
+
+  <script>
+    /* ============ NAVEGACIÓN ============ */
+    const totalSlides = 13;
+    let currentSlide = 1;
+
+    const SLIDE_TITLES = [
+      'Portada',
+      'Ruta de la sesión',
+      'CSS Grid',
+      'Grid interactivo',
+      'Meta viewport',
+      'Mobile First con max-width',
+      'Media Queries',
+      'Cortes y orden',
+      'Simulador responsive',
+      'rem y html 16px',
+      'Taller práctico',
+      'Entrega Preliminar',
+      'Cierre'
+    ];
+
+    function initDots() {
+      const container = document.getElementById('dots-container');
+      container.innerHTML = '';
+      for (let i = 1; i <= totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2.5 h-2.5 rounded-full transition-all duration-300 ${i === 1 ? 'bg-idatYellow ring-2 ring-idatDark w-4' : 'bg-gray-300 hover:bg-gray-400'}`;
+        dot.title = `Ir a Diapositiva ${i} — ${SLIDE_TITLES[i - 1]}`;
+        dot.onclick = () => jumpToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    function jumpToSlide(num) {
+      if (num < 1 || num > totalSlides) return;
+      document.getElementById(`slide-${currentSlide}`).classList.remove('active');
+      currentSlide = num;
+      document.getElementById(`slide-${currentSlide}`).classList.add('active');
+      updateUI();
+    }
+
+    function changeSlide(direction) {
+      jumpToSlide(currentSlide + direction);
+    }
+
+    function updateUI() {
+      document.getElementById('current-slide-num').innerText = currentSlide;
+      document.getElementById('total-slides-num').innerText = totalSlides;
+      document.getElementById('slide-title-hint').innerText = SLIDE_TITLES[currentSlide - 1];
+
+      document.getElementById('btn-prev').disabled = currentSlide === 1;
+      document.getElementById('btn-next').disabled = currentSlide === totalSlides;
+
+      const dots = document.getElementById('dots-container').children;
+      for (let i = 0; i < dots.length; i++) {
+        const index = i + 1;
+        if (index === currentSlide) {
+          dots[i].className = 'w-4 h-2.5 rounded-full transition-all duration-300 bg-idatYellow ring-2 ring-idatDark';
+        } else {
+          dots[i].className = 'w-2.5 h-2.5 rounded-full transition-all duration-300 bg-gray-300 hover:bg-gray-400';
+        }
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        changeSlide(1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        changeSlide(-1);
+      } else if (e.key === 'Home') {
+        jumpToSlide(1);
+      } else if (e.key === 'End') {
+        jumpToSlide(totalSlides);
+      }
+    });
+
+    /* ============ TOGGLE CÓDIGO / VISTA PREVIA ============ */
+    function toggleExample(id) {
+      const previewEl = document.getElementById(`preview-${id}`);
+      const codeEl = document.getElementById(`code-${id}`);
+      const labelEl = document.getElementById(`label-${id}`);
+
+      if (previewEl.classList.contains('hidden')) {
+        previewEl.classList.remove('hidden');
+        codeEl.classList.add('hidden');
+        labelEl.innerText = 'Resultado en Vivo';
+      } else {
+        previewEl.classList.add('hidden');
+        codeEl.classList.remove('hidden');
+        labelEl.innerText = 'Código HTML / CSS';
+      }
+    }
+
+    /* ============ GRID: columnas interactivas ============ */
+    function setGridCols(n) {
+      const demo = document.getElementById('grid-demo');
+      demo.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+
+      document.getElementById('grid-code').innerText = `grid-template-columns: repeat(${n}, 1fr);`;
+      document.getElementById('grid-cols-label').innerText = n;
+
+      document.querySelectorAll('.grid-col-btn').forEach(btn => {
+        const active = parseInt(btn.dataset.cols, 10) === n;
+        btn.classList.toggle('bg-idatDark', active);
+        btn.classList.toggle('text-idatYellow', active);
+        btn.classList.toggle('border-idatDark', active);
+        btn.classList.toggle('bg-idatLight', !active);
+        btn.classList.toggle('border-gray-300', !active);
+      });
+    }
+
+    /* ============ SIMULADOR: max-width ============ */
+    const SIM_BREAKPOINTS = [
+      { max: 480,  cls: 'sim-xs',   device: 'Celular',    mq: '@media (max-width: 480px)', cols: '1', menu: 'hamburguesa' },
+      { max: 768,  cls: 'sim-md',   device: 'Tablet',     mq: '@media (max-width: 768px)', cols: '1', menu: 'hamburguesa' },
+      { max: 1024, cls: 'sim-sm',   device: 'Laptop',     mq: '@media (max-width: 1024px)', cols: '2', menu: 'en fila' },
+      { max: Infinity, cls: 'sim-base', device: 'Escritorio', mq: 'Sin media query · estilos base', cols: '3', menu: 'en fila' }
+    ];
+
+    function setSimWidth(value) {
+      const width = Math.max(320, Math.min(1280, parseInt(value, 10) || 1280));
+      const frame = document.getElementById('sim-frame');
+      const stage = document.getElementById('sim-stage');
+      const range = document.getElementById('sim-range');
+
+      frame.style.width = width + 'px';
+      frame.style.maxWidth = width + 'px';
+
+      const avail = stage.clientWidth - 24;
+      const zoom = Math.min(1, avail / width);
+      frame.style.zoom = String(zoom);
+
+      if (range.value !== String(width)) range.value = width;
+      document.getElementById('sim-width-label').innerText = width + 'px';
+
+      const bp = SIM_BREAKPOINTS.find(b => width <= b.max);
+      frame.classList.remove('sim-base', 'sim-sm', 'sim-md', 'sim-xs');
+      frame.classList.add(bp.cls);
+
+      document.getElementById('sim-device').innerText = bp.device;
+      document.getElementById('sim-mq').innerText = bp.mq;
+      document.getElementById('sim-cols-label').innerText = bp.cols;
+      document.getElementById('sim-menu-label').innerText = bp.menu;
+
+      document.querySelectorAll('.sim-preset').forEach(btn => {
+        const isActive = parseInt(btn.dataset.bp, 10) === width;
+        btn.classList.toggle('bg-idatDark', isActive);
+        btn.classList.toggle('text-idatYellow', isActive);
+        btn.classList.toggle('border-idatDark', isActive);
+        btn.classList.toggle('bg-idatLight', !isActive);
+        btn.classList.toggle('border-gray-300', !isActive);
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      const label = document.getElementById('sim-width-label');
+      if (label) setSimWidth(parseInt(label.innerText, 10) || 1280);
+    });
+
+    /* ============ REM: calculadora ============ */
+    const ROOT_PX = 16;
+
+    function setRemValue(value) {
+      const rem = parseFloat(value);
+      document.getElementById('rem-value').innerText = rem + 'rem';
+      document.getElementById('rem-px').innerText = (rem * ROOT_PX) + 'px';
+      document.getElementById('rem-sample').style.fontSize = rem + 'rem';
+    }
+
+    /* ============ TALLER: móvil / escritorio ============ */
+    function setLabMode(mode) {
+      const frame = document.getElementById('lab-frame');
+      const btnMobile = document.getElementById('lab-btn-mobile');
+      const btnDesktop = document.getElementById('lab-btn-desktop');
+
+      frame.classList.remove('lab-mobile', 'lab-desktop');
+      frame.classList.add('lab-' + mode);
+      frame.style.maxWidth = mode === 'mobile' ? '340px' : '100%';
+
+      btnMobile.classList.toggle('lab-btn-active', mode === 'mobile');
+      btnDesktop.classList.toggle('lab-btn-active', mode === 'desktop');
+    }
+
+    /* ============ INIT ============ */
+    window.addEventListener('load', () => {
+      initDots();
+      updateUI();
+      setGridCols(3);
+      setSimWidth(1280);
+      setRemValue(1.5);
+    });
+  </script>
+</body>
+</html>
